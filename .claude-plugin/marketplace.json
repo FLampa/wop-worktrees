@@ -1,0 +1,14 @@
+{
+  "name": "wop-worktrees",
+  "description": "wop-worktrees, a Claude Code mod for wop per-branch environments",
+  "owner": {
+    "name": "FLampa"
+  },
+  "plugins": [
+    {
+      "name": "wop-worktrees",
+      "source": "./",
+      "description": "wop environments and git worktrees for Claude Code chats"
+    }
+  ]
+}
