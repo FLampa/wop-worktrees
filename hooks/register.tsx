@@ -42,6 +42,7 @@ const databases = new Map<string, string>()
 const mainCheckouts = new Map<string, string | null>()
 let lastBeat = { text: '', at: 0 }
 let askedOnExit = false
+let resuming = false
 
 async function home($: Engine) {
   return (await $.env.get('HOME')) ?? ''
@@ -657,6 +658,8 @@ async function saveLastCwd($: Engine) {
 }
 
 async function returnToLastCwd($: Engine) {
+  if (!resuming) return
+  resuming = false
   const saved = (await $.store.get(await lastCwdKey($))) as { cwd?: string } | undefined
   const target = saved?.cwd
   const cwd = await $.session.cwd()
@@ -698,6 +701,23 @@ export const register: Register = (on) => {
     $.clock.every(REFRESH_MS, () => refresh($))
     return next(e)
   })
+
+  on('classic.SessionStart', async ($, e, next) => {
+    resuming = e.source === 'resume'
+    return next(e)
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    const result = await next(e)
+    await saveLastCwd($).catch(() => {})
+    return result
+  })
+
+  on('command.run', { command: 'cd' }, async ($, e, next) => {
+    const result = await next(e)
+    await saveLastCwd($).catch(() => {})
+    return result
+  }).catch(($, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
     const result = await next(e)
@@ -753,7 +773,6 @@ export const register: Register = (on) => {
 
   on('session.end', async ($, e, next) => {
     await handOffToShell($, e.reason).catch(() => {})
-    await saveLastCwd($).catch(() => {})
     await endChat($).catch(() => {})
     const exiting = e.reason === 'prompt_input_exit' || e.reason === 'other'
     const registered = new Set(worktreesIn(exiting ? ((await readEntries($)) ?? []) : []))

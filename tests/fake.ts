@@ -78,6 +78,7 @@ export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unk
   on('session.id', async () => ({ value: 'chat-1' }))
   on('session.cwd', async () => ({ value: world.cwd }))
   on('session.start', async () => ({ cwd: world.cwd }))
+  on('classic.SessionStart', async () => ({}))
   on('session.end', async () => ({ sessionId: 'chat-1' }))
 
   on('fs.read', async ($, e) => {
