@@ -3,14 +3,19 @@ set -euo pipefail
 
 repo="/Users/Shared/acme-shop"
 remote="${TMPDIR:-/tmp}/acme-shop.git"
+registry="$HOME/.config/devmanager/registry.json"
 branches=(feature/login feature/search)
 
 down() {
-  if [[ -d "$repo" ]]; then
-    for branch in "${branches[@]}"; do
-      (cd "$repo" && wop down "$branch" >/dev/null 2>&1) || true
-    done
+  if [[ -d "$repo" && -f "$registry" ]]; then
+    jq -r --arg repo "$repo" '[.entries[] | select(.project_path == $repo) | .branch] | unique[]' "$registry" |
+      while IFS= read -r branch; do
+        (cd "$repo" && wop down "$branch" >/dev/null 2>&1) || true
+      done
   fi
+  for chat in "$HOME"/.claude/wop-worktrees/chats/*.json; do
+    [[ -f "$chat" ]] && jq -e --arg repo "$repo" '.cwd | startswith($repo)' "$chat" >/dev/null && rm -f "$chat"
+  done
   rm -rf "$repo" "$remote"
 }
 
@@ -45,12 +50,14 @@ databases:
     name_pattern: "acme_shop_{branch_slug}"
 EOF
 printf '# Acme Shop\n' >README.md
+printf '<h1>Acme Shop</h1>\n' >index.html
 printf '.env\n*.log\n' >.gitignore
-git add .devmanager.yml README.md .gitignore
+git add .devmanager.yml README.md index.html .gitignore
 git -c user.name=demo -c user.email=demo@example.com commit -qm "Start the shop"
-git init -q --bare "$remote"
+git init -q --bare -b main "$remote"
 git remote add origin "$remote"
-git push -q origin main
+git push -q -u origin main
+git remote set-head origin main
 
 for branch in "${branches[@]}"; do
   wop up "$branch" >/dev/null

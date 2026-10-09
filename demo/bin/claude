@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+PATH=$(tr ':' '\n' <<<"$PATH" | grep -vxF "$here" | paste -sd: -)
+
+settings=$(jq -cn --arg root "$root" '{
+  tui: "fullscreen",
+  hooks: {
+    WorktreeCreate: [{ hooks: [{ type: "command", command: ("\"" + $root + "/scripts/worktree-create.sh\""), timeout: 1200 }] }],
+    WorktreeRemove: [{ hooks: [{ type: "command", command: ("\"" + $root + "/scripts/worktree-remove.sh\""), timeout: 300 }] }]
+  }
+}')
+
+exec claude --setting-sources project --strict-mcp-config --permission-mode default \
+  --allowedTools 'Bash(curl:*)' --settings "$settings" --plugin-dir "$root" "$@"
