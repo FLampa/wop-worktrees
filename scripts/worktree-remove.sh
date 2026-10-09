@@ -7,7 +7,10 @@ registry="${WOP_STATE_DIR:-$HOME/.config/devmanager}/registry.json"
 
 grep -lxF "$path" "$HOME/.claude/wop-worktrees/claude-sessions/"* 2>/dev/null | xargs rm -f || true
 
-entry=$([[ -f "$registry" ]] && jq -c --arg path "$path" '[.entries[] | select(.worktree_path == $path)][0] // empty' "$registry" || true)
+entry=""
+if [[ -f "$registry" ]]; then
+  entry=$(jq -c --arg path "$path" '[.entries[] | select(.worktree_path == $path)][0] // empty' "$registry" || true)
+fi
 
 if [[ -n "$entry" ]]; then
   cd "$(jq -r '.project_path' <<<"$entry")"
