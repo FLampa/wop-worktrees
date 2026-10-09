@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EXIT, LOGIN, NOW, PICKER, SEARCH, SESSION_START, SPIKE, WORKTREES, fake, otherChat, ran } from './fake'
+import { EXIT, LOGIN, MAIN, NOW, PICKER, SEARCH, SESSION_START, SPIKE, WORKTREES, fake, otherChat, ran } from './fake'
 
 const PANE = {
   plugin: 'wop-worktrees',
@@ -24,6 +24,16 @@ describe('the worktree list', () => {
       expect(await ui.find({ text: 'web :4001' })).toBeDefined()
       await ui.unmount()
     }
+  })
+
+  test('counts environments whose registry path goes through a symlink as this repo', async ($, on) => {
+    fake(on, { project: '/link/app', links: { '/link/app': MAIN } })
+    await $.session.start(SESSION_START)
+    await $.command.run(WORKTREES)
+
+    const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    expect(await ui.find({ text: 'web :4001' })).toBeDefined()
+    expect(await ui.find({ text: 'web :4011' })).toBeDefined()
   })
 
   test('warns that another chat is working in an environment before tearing it down', async ($, on) => {

@@ -19,6 +19,7 @@ export type Fake = {
   gitStatus: string
   unpushed: string
   commands: string[]
+  links: Record<string, string>
   advance: (ms: number) => Promise<void>
 }
 
@@ -39,6 +40,7 @@ const worktreeList = [
 
 function stdout(fake: Fake, argv: readonly string[]) {
   const command = argv.slice(0, 2).join(' ')
+  if (command === 'sh -c') return (fake.links[argv[4] ?? ''] ?? argv[4]) + '\n'
   if (argv[0] === 'ps') return '101\n102\n201\n'
   if (command === 'git rev-parse') return MAIN + '/.git\n'
   if (command === 'git status') return fake.gitStatus
@@ -51,10 +53,15 @@ export function otherChat(fake: Fake, id: string, chat: { cwd: string; attached:
   fake.files.set(CHATS + '/' + id + '.json', { text: JSON.stringify(chat), mtimeMs: NOW })
 }
 
-export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unknown>; env?: Record<string, string> } = {}): Fake {
+export function fake(
+  on: On,
+  start: Partial<Fake> & { store?: Record<string, unknown>; env?: Record<string, string>; project?: string } = {},
+): Fake {
+  const project = start.project ?? MAIN
+  const entries = registry.entries.map((entry) => ({ ...entry, project_path: project }))
   const world: Fake = {
     files: new Map([
-      [HOME + '/.config/devmanager/registry.json', { text: JSON.stringify(registry), mtimeMs: NOW }],
+      [HOME + '/.config/devmanager/registry.json', { text: JSON.stringify({ entries }), mtimeMs: NOW }],
       [LOGIN + '/.env', { text: 'DATABASE_URL=postgresql://localhost/app_login_ab12\n', mtimeMs: NOW }],
       [SEARCH + '/.env', { text: 'DATABASE_URL=postgresql://localhost/app_search_cd34\n', mtimeMs: NOW }],
       [SPIKE + '/README.md', { text: '', mtimeMs: NOW }],
@@ -66,6 +73,7 @@ export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unk
     gitStatus: '',
     unpushed: '0\n',
     commands: [],
+    links: {},
     advance: async () => {},
     ...start,
   }

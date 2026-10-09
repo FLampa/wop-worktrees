@@ -43,6 +43,7 @@ const RETURN_DELAY_MS = 300
 
 const databases = new Map<string, string>()
 const mainCheckouts = new Map<string, string | null>()
+const resolvedPaths = new Map<string, string>()
 let lastBeat = { text: '', at: 0 }
 let askedOnExit = false
 let resuming = false
@@ -72,12 +73,30 @@ async function storeKey($: Engine) {
   return 'attached:' + (await $.session.id())
 }
 
+async function resolvePath($: Engine, path: string) {
+  const known = resolvedPaths.get(path)
+  if (known) return known
+  const shell = await $.process.run(['sh', '-c', 'cd "$1" && pwd -P', 'sh', path])
+  if (shell.exitCode !== 0) return path
+  const resolved = shell.stdout.trim()
+  resolvedPaths.set(path, resolved)
+  return resolved
+}
+
 async function readEntries($: Engine): Promise<RegistryEntry[] | null> {
+  let entries: RegistryEntry[]
   try {
-    return JSON.parse(await $.fs.read(await registryPath($))).entries ?? []
+    entries = JSON.parse(await $.fs.read(await registryPath($))).entries ?? []
   } catch {
     return (await $.fs.exists(await registryPath($))) ? null : []
   }
+  return Promise.all(
+    entries.map(async (entry) => ({
+      ...entry,
+      project_path: await resolvePath($, entry.project_path),
+      worktree_path: await resolvePath($, entry.worktree_path),
+    })),
+  )
 }
 
 async function sessionWorktree($: Engine) {
