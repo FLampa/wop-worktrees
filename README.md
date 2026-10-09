@@ -22,6 +22,8 @@ and asks what to do with them when you exit.
 - **`/exit` prompt.** For each environment the chat used, `/exit` asks *Keep running*,
   *Stop services* (`wop stop`) or *Tear down* (`wop down`), with the same warnings. `Esc`
   cancels the exit.
+- **Asking after Ctrl+C.** With the optional shell wrapper (below), leaving with a double
+  Ctrl+C or Ctrl+D asks the same question in your terminal once Claude Code has closed.
 
 A chat uses an environment when its working directory is inside it, a tool call names it,
 or Claude ran `wop up`/`wop restart` for its branch, even if the environment registers
@@ -75,6 +77,22 @@ rejected):
 
 While `/diff`'s panel is open, Ctrl+Q cycles its diff base instead.
 
+## Optional: ask after Ctrl+C
+
+A mod can't catch Ctrl+C: Claude Code reserves the key, and nothing can be asked once the
+interface is closing. So the mod hands the chat's environments to a `claude` shell
+function instead, which asks *keep running*, *stop services* or *tear down* after Claude
+Code exits, with the same warnings. It asks nothing after `/exit` (the mod already did),
+after `claude -p`, or when the terminal isn't interactive.
+
+Add this to `~/.zshrc` or `~/.bashrc`, with the path to a clone of this repo:
+
+```bash
+source /path/to/wop-worktrees/scripts/claude-wrapper.sh
+```
+
+It needs `jq`. Closing the terminal tab skips the question, since the shell goes with it.
+
 ## Optional: `claude -w <type>/<name>` through wop
 
 `scripts/worktree-create.sh` and `scripts/worktree-remove.sh` are `WorktreeCreate` and
@@ -103,9 +121,8 @@ The hooks must live in a settings file, because hooks a plugin declares load too
 
 ## Limits
 
-- **No prompt on Ctrl+C or Ctrl+D.** Mods can't ask anything once the interface is
-  closing, so only `/exit` gets the prompt. `claude -w` chats get Claude Code's own
-  keep/remove prompt instead.
+- **No prompt inside Claude Code on Ctrl+C or Ctrl+D.** Only `/exit` asks there. The shell
+  wrapper asks afterwards, and `claude -w` chats get Claude Code's own keep/remove prompt.
 - **No Down-arrow access** to the footer button. Use a click, `/worktrees` or Ctrl+Q.
 - **Clicking needs fullscreen rendering** (`"tui": "fullscreen"`).
 - **Other chats are seen only if they run this mod.** Each chat records its directory

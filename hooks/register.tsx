@@ -40,6 +40,7 @@ const STALE_ATTACHED_MS = 30 * 24 * 60 * 60_000
 const databases = new Map<string, string>()
 const mainCheckouts = new Map<string, string | null>()
 let lastBeat = { text: '', at: 0 }
+let askedOnExit = false
 
 async function home($: Engine) {
   return (await $.env.get('HOME')) ?? ''
@@ -642,6 +643,17 @@ function footerItems($: Engine, ui: Ui, environments: WopEnvironment[]) {
   ]
 }
 
+function usedByChat(environment: WopEnvironment) {
+  return (environment.attached || environment.current) && !environment.claudeWorktree
+}
+
+async function handOffToShell($: Engine, reason: string) {
+  const path = await $.env.get('WOP_WORKTREES_EXIT_FILE')
+  if (!path || reason !== 'prompt_input_exit') return
+  const left = askedOnExit ? [] : (await read($, environmentsState)).filter(usedByChat)
+  await $.fs.write(path, JSON.stringify(left))
+}
+
 async function askOnExit($: Engine, environment: WopEnvironment) {
   const risk = await worktreeRisk($, environment.worktree, serviceLogs(environment))
   const question = exitQuestion(environment, warnings(risk, environment.otherChats))
@@ -698,7 +710,7 @@ export const register: Register = (on) => {
   on('command.run', { command: 'exit' }, async ($, e, next) => {
     await refresh($)
     const environments = await read($, environmentsState)
-    for (const environment of environments.filter((candidate) => (candidate.attached || candidate.current) && !candidate.claudeWorktree)) {
+    for (const environment of environments.filter(usedByChat)) {
       let answer: string
       try {
         answer = await askOnExit($, environment)
@@ -708,10 +720,12 @@ export const register: Register = (on) => {
       if (answer === STOP) await runWop($, environment, 'stop')
       if (answer === DOWN) await runWop($, environment, 'down')
     }
+    askedOnExit = true
     return next(e)
   }).catch(($, e, next) => next(e))
 
   on('session.end', async ($, e, next) => {
+    await handOffToShell($, e.reason).catch(() => {})
     await endChat($).catch(() => {})
     const exiting = e.reason === 'prompt_input_exit' || e.reason === 'other'
     const registered = new Set(worktreesIn(exiting ? ((await readEntries($)) ?? []) : []))

@@ -49,7 +49,7 @@ export function otherChat(fake: Fake, id: string, chat: { cwd: string; attached:
   fake.files.set(CHATS + '/' + id + '.json', { text: JSON.stringify(chat), mtimeMs: NOW })
 }
 
-export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unknown> } = {}): Fake {
+export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unknown>; env?: Record<string, string> } = {}): Fake {
   const world: Fake = {
     files: new Map([
       [HOME + '/.config/devmanager/registry.json', { text: JSON.stringify(registry), mtimeMs: NOW }],
@@ -66,7 +66,7 @@ export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unk
     ...start,
   }
 
-  mock.env(on, { HOME })
+  mock.env(on, { HOME, ...start.env })
   mock.store(on, start.store ?? {})
   mock.clock(on, { now: NOW })
 
@@ -123,3 +123,6 @@ export const WORKTREES = { ...EXIT, command: 'worktrees' } as const
 export function ran(world: Fake, ...argv: string[]) {
   return world.runs.some((run) => argv.every((part, index) => run[index] === part))
 }
+
+export const EXIT_FILE = '/tmp/wop-worktrees-exit.test'
+export const LEFT = { reason: 'prompt_input_exit', sessionId: 'chat-1', resume: { id: 'chat-1' } } as const

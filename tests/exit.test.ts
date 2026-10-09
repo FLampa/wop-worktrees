@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EXIT, LOGIN, MAIN, SESSION_START, fake, otherChat, ran } from './fake'
+import { EXIT, EXIT_FILE, LEFT, LOGIN, MAIN, SESSION_START, fake, otherChat, ran } from './fake'
 
 describe('/exit', () => {
   test('tears down the environment the chat is in when asked to', async ($, on) => {
@@ -47,5 +47,26 @@ describe('/exit', () => {
 
     expect(world.questions).toHaveLength(0)
     expect(result.text).toBe('ran exit')
+  })
+
+  test("a double Ctrl+C hands the chat's environments to the shell wrapper", async ($, on) => {
+    const world = fake(on, { cwd: LOGIN, env: { WOP_WORKTREES_EXIT_FILE: EXIT_FILE } })
+    await $.session.start({ ...SESSION_START, cwd: LOGIN })
+
+    await $.session.end(LEFT)
+
+    const left = JSON.parse(world.files.get(EXIT_FILE)?.text ?? 'null')
+    expect(left).toHaveLength(1)
+    expect(left[0]).toMatchObject({ branch: 'feature/login', project: MAIN, worktree: LOGIN, database: 'app_login_ab12' })
+  })
+
+  test('the shell wrapper asks nothing after /exit already did', async ($, on) => {
+    const world = fake(on, { cwd: LOGIN, env: { WOP_WORKTREES_EXIT_FILE: EXIT_FILE } })
+    await $.session.start({ ...SESSION_START, cwd: LOGIN })
+
+    await $.command.run(EXIT)
+    await $.session.end(LEFT)
+
+    expect(world.files.get(EXIT_FILE)?.text).toBe('[]')
   })
 })
