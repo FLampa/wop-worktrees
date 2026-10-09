@@ -120,6 +120,9 @@ export function fake(
     return { result: { questions: e.questions, answers: { [question]: world.answer } } }
   })
 
+  on('tool.call', { tool: 'Bash' }, async () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
+  on('turn.complete', async ($, e) => ({ text: e.answer }))
+
   on('command.register', async ($, e) => ({ value: { command: e.name } }))
   on('command.run', async ($, e) => {
     world.commands.push((e.command + ' ' + e.args).trim())
@@ -140,6 +143,12 @@ export const WORKTREES = { ...EXIT, command: 'worktrees' } as const
 
 export function ran(world: Fake, ...argv: string[]) {
   return world.runs.some((run) => argv.every((part, index) => run[index] === part))
+}
+
+export const TURN = { answer: 'Done.', durationMs: 1000, isAborted: false, turnId: 'turn-1', reason: 'answer' } as const
+
+export function wopUp(branch: string) {
+  return { tool: 'Bash', command: 'wop up ' + branch, description: 'Bring up ' + branch } as const
 }
 
 export const EXIT_FILE = '/tmp/wop-worktrees-exit.test'

@@ -77,6 +77,10 @@ the chat there, restarting stopped services first.
   <img src="demo/switch.gif" width="760" alt="The worktree list shows feature/search stopped; picking it restarts its services, the footer switches to search :5101, and Ctrl+Q reopens the list with both environments running">
 </p>
 
+When Claude runs `wop up` or `wop restart` for a branch, the mod asks *Move* or *Stay* at the
+end of the turn, once the environment has registered. It asks once per environment, never
+mid-turn, and not when the chat is already there.
+
 ### Claude knows the environment
 
 A chat in a wop environment gets its ports, web URL and database in its context, plus "leave
