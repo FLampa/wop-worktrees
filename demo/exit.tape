@@ -13,7 +13,7 @@ Set MarginFill "#D97757"
 Set BorderRadius 12
 Set Theme "Catppuccin Mocha"
 Set WindowBar Colorful
-Set TypingSpeed 45ms
+Set TypingSpeed 65ms
 Set CursorBlink false
 
 Hide
@@ -23,22 +23,22 @@ Wait@30s
 Show
 
 Type "claude"
-Sleep 300ms
+Sleep 400ms
 Enter
 Hide
 Wait+Screen@60s /View all worktrees/
 Sleep 1.5s
 Show
-Sleep 1.5s
+Sleep 2s
 
 Type "/exit"
 Enter
 Wait+Screen@30s /Tear down/
-Sleep 3.5s
+Sleep 4.7s
 Down
-Sleep 400ms
+Sleep 500ms
 Down
-Sleep 900ms
+Sleep 1.2s
 Enter
 Wait@120s
-Sleep 2.5s
+Sleep 3.4s

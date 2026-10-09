@@ -13,7 +13,7 @@ Set MarginFill "#D97757"
 Set BorderRadius 12
 Set Theme "Catppuccin Mocha"
 Set WindowBar Colorful
-Set TypingSpeed 45ms
+Set TypingSpeed 65ms
 Set CursorBlink false
 
 Hide
@@ -22,11 +22,11 @@ Enter
 Show
 
 Type "claude -w feature/checkout"
-Sleep 400ms
+Sleep 500ms
 Enter
-Sleep 1s
+Sleep 1.4s
 Hide
 Wait+Screen@120s /checkout :510\d/
 Sleep 1.5s
 Show
-Sleep 4s
+Sleep 5.4s

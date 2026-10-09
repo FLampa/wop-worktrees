@@ -153,8 +153,9 @@ Closing the terminal tab skips the question, since the shell goes with it.
 `scripts/worktree-create.sh` and `scripts/worktree-remove.sh` are `WorktreeCreate` and
 `WorktreeRemove` hooks. With them, `claude -w feature/login` runs `wop up` and starts the chat
 in the new environment. A branch that only exists on the remote is checked out from it, and a
-new one starts from the remote's default branch. On exit, Claude Code's own keep/remove prompt
-runs `wop down` on *Remove*, and the mod runs `wop stop` on *Keep*. Names without a `/` (and
+new one starts from the remote's default branch. On exit, Claude Code removes a worktree with no
+changes on its own, which runs `wop down`. If it has changes, Claude Code asks *Keep worktree*
+or *Remove worktree*: *Remove* runs `wop down`, and on *Keep* the mod runs `wop stop`. Names without a `/` (and
 subagent worktrees) get a plain git worktree under `.claude/worktrees/`.
 
 <p align="center">
