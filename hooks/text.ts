@@ -95,3 +95,20 @@ export function exitQuestion(environment: WopEnvironment, found: readonly string
     ' and ports (' + ports + ').' + warning + ' What should happen to it before you exit?'
   )
 }
+
+export function environmentFacts(environment: WopEnvironment) {
+  const services = [...environment.services].sort((left, right) => (left.name === 'web' ? -1 : right.name === 'web' ? 1 : 0))
+  const web = webService(environment)
+  return [
+    'This chat is in the wop environment for branch ' + environment.branch + ', worktree ' + environment.worktree + '.',
+    'Its services: ' + services.map((service) => service.name + ' on port ' + service.port).join(', ') + '.' +
+      (web ? ' The app is at http://localhost:' + web.port + '. Use these ports, not framework defaults like 3000.' : ''),
+    'Its database: ' + (environment.database ?? 'unknown (see DATABASE_URL in its .env)') + '.',
+    'Other wop environments belong to other branches and chats: never stop, restart or kill their processes or ports.',
+    'Manage this one with `wop restart|stop ' + environment.branch + '`, run from the main checkout ' + environment.project + '.',
+  ].join('\n')
+}
+
+export function leftEnvironmentNote(cwd: string) {
+  return 'This chat is no longer in a wop environment. It now works in ' + cwd + '; earlier wop ports and database facts no longer apply.'
+}

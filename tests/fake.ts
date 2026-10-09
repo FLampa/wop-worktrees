@@ -79,6 +79,7 @@ export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unk
   on('session.cwd', async () => ({ value: world.cwd }))
   on('session.start', async () => ({ cwd: world.cwd }))
   on('classic.SessionStart', async () => ({}))
+  on('prompt.context', async ($, e) => ({ blocks: e.blocks }))
   on('session.end', async () => ({ sessionId: 'chat-1' }))
 
   on('fs.read', async ($, e) => {

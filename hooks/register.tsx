@@ -4,10 +4,12 @@ import type { Elements, EngineInterface, Register } from 'claude-code'
 import type { WopEnvironment, WopPicker, WopPlainWorktree, WopRisk } from '../types'
 import {
   WOP_COMMAND,
+  environmentFacts,
   exitQuestion,
   fit,
   health,
   insideWorktree,
+  leftEnvironmentNote,
   matchesToolCall,
   parseGitWorktrees,
   plural,
@@ -28,6 +30,7 @@ const pickerState = atom({ plugin: 'wop-worktrees', key: 'picker' } as const, nu
 const focusedState = atom({ plugin: 'wop-worktrees', key: 'focused' } as const, null)
 const confirmingState = atom({ plugin: 'wop-worktrees', key: 'confirming' } as const, null)
 const riskState = atom({ plugin: 'wop-worktrees', key: 'risk' } as const, null)
+const announcedState = atom({ plugin: 'wop-worktrees', key: 'announced' } as const, null)
 
 type Chat = { cwd: string; attached: string[] }
 
@@ -43,6 +46,7 @@ const mainCheckouts = new Map<string, string | null>()
 let lastBeat = { text: '', at: 0 }
 let askedOnExit = false
 let resuming = false
+let started = false
 
 async function home($: Engine) {
   return (await $.env.get('HOME')) ?? ''
@@ -221,6 +225,17 @@ async function refresh($: Engine) {
   const described = await describeAll($, entries, cwd, attached, main)
   const environments = described.filter((environment) => environment.inProject || environment.current || environment.attached)
   if (!sameJson(environments, await read($, environmentsState))) await update($, environmentsState, () => environments)
+  await announce($, cwd, environments.find((environment) => environment.current) ?? null)
+}
+
+async function announce($: Engine, cwd: string, current: WopEnvironment | null) {
+  const facts = current ? environmentFacts(current) : null
+  const before = await read($, announcedState)
+  if (facts === before) return
+  await update($, announcedState, () => facts)
+  if (!started) return
+  const text = facts ?? (before ? leftEnvironmentNote(cwd) : null)
+  if (text) await $.session.append({ message: { type: 'user', content: [{ type: 'text', text }] } })
 }
 
 async function prune($: Engine) {
@@ -697,10 +712,19 @@ export const register: Register = (on) => {
     await restoreAttached($)
     await prune($).catch(() => {})
     await refresh($)
+    started = true
     await returnToLastCwd($).catch(() => {})
     $.clock.every(REFRESH_MS, () => refresh($))
     return next(e)
   })
+
+  on('prompt.context', async ($, e, next) => {
+    const result = await next(e)
+    await refresh($)
+    const facts = await read($, announcedState)
+    if (!facts) return result
+    return { ...result, blocks: [...result.blocks, { name: 'wopEnvironment', text: facts }] }
+  }).catch(($, e, next) => next(e))
 
   on('classic.SessionStart', async ($, e, next) => {
     resuming = e.source === 'resume'

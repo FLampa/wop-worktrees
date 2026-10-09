@@ -22,6 +22,10 @@ and asks what to do with them when you exit.
 - **`/exit` prompt.** For each environment the chat used, `/exit` asks *Keep running*,
   *Stop services* (`wop stop`) or *Tear down* (`wop down`), with the same warnings. `Esc`
   cancels the exit.
+- **Claude knows the environment.** A chat that starts in a wop environment gets its ports,
+  web URL, database and "leave other environments alone" in its opening context, so it
+  doesn't guess port 3000. Moving into or out of an environment mid-chat adds a short note
+  instead of rewriting that context, which keeps Claude's prompt cache.
 - **Resuming.** Claude Code resumes a chat in the folder you run `claude --resume` from. If
   the chat was in another worktree of the same repo when it closed, the mod moves it back
   there, restarting stopped services first.

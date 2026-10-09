@@ -35,6 +35,7 @@ declare module 'claude-code' {
       focused: string | null
       confirming: string | null
       risk: WopRisk | null
+      announced: string | null
     }
   }
 }
