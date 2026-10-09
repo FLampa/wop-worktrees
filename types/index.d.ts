@@ -36,6 +36,8 @@ declare module 'claude-code' {
       confirming: string | null
       risk: WopRisk | null
       announced: string | null
+      offers: string[]
+      offered: string[]
     }
   }
 }

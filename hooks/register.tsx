@@ -4,6 +4,7 @@ import type { Elements, EngineInterface, Register } from 'claude-code'
 import type { WopEnvironment, WopPicker, WopPlainWorktree, WopRisk } from '../types'
 import {
   WOP_COMMAND,
+  branchesIn,
   environmentFacts,
   exitQuestion,
   fit,
@@ -31,6 +32,8 @@ const focusedState = atom({ plugin: 'wop-worktrees', key: 'focused' } as const, 
 const confirmingState = atom({ plugin: 'wop-worktrees', key: 'confirming' } as const, null)
 const riskState = atom({ plugin: 'wop-worktrees', key: 'risk' } as const, null)
 const announcedState = atom({ plugin: 'wop-worktrees', key: 'announced' } as const, null)
+const offersState = atom({ plugin: 'wop-worktrees', key: 'offers' } as const, [])
+const offeredState = atom({ plugin: 'wop-worktrees', key: 'offered' } as const, [])
 
 type Chat = { cwd: string; attached: string[] }
 
@@ -40,6 +43,9 @@ const CHAT_BEAT_MS = 20_000
 const STALE_CHAT_MS = 24 * 60 * 60_000
 const STALE_SESSION_MS = 30 * 24 * 60 * 60_000
 const RETURN_DELAY_MS = 300
+const OFFER_DELAY_MS = 300
+const MOVE = 'Move'
+const STAY = 'Stay'
 
 const databases = new Map<string, string>()
 const mainCheckouts = new Map<string, string | null>()
@@ -146,13 +152,26 @@ async function restoreAttached($: Engine) {
   if (saved?.worktrees) await update($, attachedState, () => saved.worktrees ?? [])
 }
 
+function broughtUp(entries: RegistryEntry[], texts: string[]) {
+  return worktreesIn(entries.filter((entry) => texts.some((text) => branchesIn(text).has(entry.branch))))
+}
+
+async function queueOffers($: Engine, worktrees: string[]) {
+  const offered = await read($, offeredState)
+  const fresh = worktrees.filter((worktree) => !offered.includes(worktree))
+  if (fresh.length === 0) return
+  await update($, offeredState, () => [...offered, ...fresh])
+  await update($, offersState, (offers) => [...offers, ...fresh])
+}
+
 async function attachFromToolCall($: Engine, toolCall: unknown) {
   const text = JSON.stringify(toolCall)
+  const entries = (await readEntries($)) ?? []
   if (WOP_COMMAND.test(text)) {
     const until = (await $.clock.now()) + PENDING_TTL_MS
     await update($, pendingState, (pending) => [...pending, { text, until }])
+    await queueOffers($, broughtUp(entries, [text]))
   }
-  const entries = (await readEntries($)) ?? []
   const touched = worktreesIn(entries.filter((entry) => matchesToolCall(text, entry)))
   const attached = await read($, attachedState)
   if (touched.some((worktree) => !attached.includes(worktree))) await saveAttached($, [...new Set([...attached, ...touched])])
@@ -168,6 +187,7 @@ async function attach($: Engine, cwd: string, entries: RegistryEntry[]) {
   const before = await read($, attachedState)
   const attached = [...new Set([...before, ...fromPending, ...here])].filter((worktree) => registered.includes(worktree))
   const waiting = pending.filter((mention) => !matched(mention.text))
+  await queueOffers($, broughtUp(entries, pending.map((mention) => mention.text)))
 
   if (!sameJson(waiting, await read($, pendingState))) await update($, pendingState, () => waiting)
   if (!sameJson(attached, before)) await saveAttached($, attached)
@@ -395,6 +415,24 @@ async function enter($: Engine, path: string, environment: WopEnvironment | null
   if (environment && !attached.includes(environment.worktree)) await saveAttached($, [...attached, environment.worktree])
   await $.command.run({ command: 'cd', args: path })
   await refresh($)
+}
+
+async function offerMoves($: Engine) {
+  const offers = await read($, offersState)
+  if (offers.length === 0) return
+  await update($, offersState, () => [])
+  await refresh($)
+  for (const worktree of offers) {
+    const environment = (await read($, environmentsState)).find((candidate) => candidate.worktree === worktree)
+    if (!environment || environment.current || environment.missing) continue
+    let answer: string
+    try {
+      answer = await $.ui.ask('Move this chat to ' + environment.branch + '?', { header: 'wop', options: [MOVE, STAY] })
+    } catch {
+      continue
+    }
+    if (answer === MOVE) return enter($, environment.worktree, environment)
+  }
 }
 
 function removalFor(view: View, key: string | null): Removal | null {
@@ -753,6 +791,7 @@ export const register: Register = (on) => {
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
     await saveLastCwd($).catch(() => {})
+    if (!e.agentId) $.clock.after(OFFER_DELAY_MS, () => offerMoves($).catch(() => {}))
     return result
   })
 
