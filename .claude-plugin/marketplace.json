@@ -8,7 +8,14 @@
     {
       "name": "wop-worktrees",
       "source": "./",
-      "description": "wop environments and git worktrees for Claude Code chats"
+      "description": "wop environments and git worktrees for Claude Code chats",
+      "relevance": {
+        "topic": "wop",
+        "signals": {
+          "cli": ["wop"],
+          "filesRead": ["**/.devmanager.yml"]
+        }
+      }
     }
   ]
 }

@@ -44,17 +44,25 @@ Answer `y` to add the marketplace and pick the user scope. A local-scope install
 the checkout that holds it, not in its worktrees. The mod draws nothing outside repos with wop
 environments.
 
-To offer it to everyone working on a project, commit this to the project's
+To make it available to everyone working on a project, commit this to the project's
 `.claude/settings.json`:
 
 ```json
 {
   "extraKnownMarketplaces": {
     "wop-worktrees": { "source": { "source": "github", "repo": "FLampa/wop-worktrees" } }
-  },
-  "enabledPlugins": { "wop-worktrees@wop-worktrees": true }
+  }
 }
 ```
+
+Claude Code then registers the marketplace for each person who opens the project, and the mod
+appears in `/plugin` under Discover. Each person installs it with
+`/plugin install wop-worktrees@wop-worktrees`. Adding `"wop-worktrees@wop-worktrees": true`
+under `enabledPlugins` instead loads it for everyone, without asking.
+
+If your organization's Claude admin adds `wop-worktrees` to `pluginSuggestionMarketplaces` in
+managed settings, Claude Code also suggests the mod once Claude runs `wop` or reads a
+`.devmanager.yml`.
 
 ## Features
 
