@@ -6,6 +6,8 @@ own worktree, ports and database. It keeps the chat's wop environment visible wh
 work, lets you switch between environments and git worktrees without leaving Claude Code,
 and asks what to do with them when you exit.
 
+<!-- Demo GIF goes here: footer, worktree list and the /exit prompt, recorded with no internal names. -->
+
 ## What it does
 
 - **Footer.** In a repo with wop environments, the right end of the prompt footer shows the

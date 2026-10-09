@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: claude --version
+      - run: claude plugin validate .
+      - run: claude plugin test .
+      - name: Check the shell scripts
+        run: |
+          bash -n scripts/claude-wrapper.sh scripts/worktree-create.sh scripts/worktree-remove.sh
+          shellcheck --shell=bash scripts/*.sh
