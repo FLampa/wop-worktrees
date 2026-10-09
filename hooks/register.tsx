@@ -35,7 +35,8 @@ const PENDING_TTL_MS = 30 * 60_000
 const CHAT_FRESH_MS = 60_000
 const CHAT_BEAT_MS = 20_000
 const STALE_CHAT_MS = 24 * 60 * 60_000
-const STALE_ATTACHED_MS = 30 * 24 * 60 * 60_000
+const STALE_SESSION_MS = 30 * 24 * 60 * 60_000
+const RETURN_DELAY_MS = 300
 
 const databases = new Map<string, string>()
 const mainCheckouts = new Map<string, string | null>()
@@ -225,7 +226,7 @@ async function prune($: Engine) {
   const now = await $.clock.now()
   for (const key of await $.store.keys()) {
     const saved = (await $.store.get(key)) as { at?: number } | undefined
-    if (key.startsWith('attached:') && now - (saved?.at ?? 0) > STALE_ATTACHED_MS) await $.store.delete(key)
+    if ((key.startsWith('attached:') || key.startsWith('cwd:')) && now - (saved?.at ?? 0) > STALE_SESSION_MS) await $.store.delete(key)
   }
 
   const dir = await chatsDir($)
@@ -347,6 +348,10 @@ async function togglePicker($: Engine) {
 
 async function moveTo($: Engine, path: string, environment: WopEnvironment | null) {
   await closePicker($)
+  await enter($, path, environment)
+}
+
+async function enter($: Engine, path: string, environment: WopEnvironment | null) {
   if (environment?.services.some((service) => !service.running)) {
     $.ui.toast('Restarting ' + environment.branch + '…')
     await runWop($, environment, 'restart')
@@ -643,6 +648,27 @@ function footerItems($: Engine, ui: Ui, environments: WopEnvironment[]) {
   ]
 }
 
+async function lastCwdKey($: Engine) {
+  return 'cwd:' + (await $.session.id())
+}
+
+async function saveLastCwd($: Engine) {
+  await $.store.set(await lastCwdKey($), { cwd: await $.session.cwd(), at: await $.clock.now() })
+}
+
+async function returnToLastCwd($: Engine) {
+  const saved = (await $.store.get(await lastCwdKey($))) as { cwd?: string } | undefined
+  const target = saved?.cwd
+  const cwd = await $.session.cwd()
+  if (!target || target === cwd || !(await $.fs.exists(target))) return
+  if ((await mainCheckout($, target)) !== (await mainCheckout($, cwd))) return
+  const environment = (await read($, environmentsState)).find((candidate) => insideWorktree(target, candidate.worktree)) ?? null
+  $.clock.after(RETURN_DELAY_MS, async () => {
+    await enter($, target, environment)
+    $.ui.toast('Back in ' + (environment?.branch ?? target))
+  })
+}
+
 function usedByChat(environment: WopEnvironment) {
   return (environment.attached || environment.current) && !environment.claudeWorktree
 }
@@ -668,6 +694,7 @@ export const register: Register = (on) => {
     await restoreAttached($)
     await prune($).catch(() => {})
     await refresh($)
+    await returnToLastCwd($).catch(() => {})
     $.clock.every(REFRESH_MS, () => refresh($))
     return next(e)
   })
@@ -726,6 +753,7 @@ export const register: Register = (on) => {
 
   on('session.end', async ($, e, next) => {
     await handOffToShell($, e.reason).catch(() => {})
+    await saveLastCwd($).catch(() => {})
     await endChat($).catch(() => {})
     const exiting = e.reason === 'prompt_input_exit' || e.reason === 'other'
     const registered = new Set(worktreesIn(exiting ? ((await readEntries($)) ?? []) : []))

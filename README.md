@@ -22,6 +22,9 @@ and asks what to do with them when you exit.
 - **`/exit` prompt.** For each environment the chat used, `/exit` asks *Keep running*,
   *Stop services* (`wop stop`) or *Tear down* (`wop down`), with the same warnings. `Esc`
   cancels the exit.
+- **Resuming.** Claude Code resumes a chat in the folder you run `claude --resume` from. If
+  the chat was in another worktree of the same repo when it closed, the mod moves it back
+  there, restarting stopped services first.
 - **Asking after Ctrl+C.** With the optional shell wrapper (below), leaving with a double
   Ctrl+C or Ctrl+D asks the same question in your terminal once Claude Code has closed.
 

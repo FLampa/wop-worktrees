@@ -18,6 +18,8 @@ export type Fake = {
   cwd: string
   gitStatus: string
   unpushed: string
+  commands: string[]
+  advance: (ms: number) => Promise<void>
 }
 
 const registry = {
@@ -63,12 +65,15 @@ export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unk
     cwd: MAIN,
     gitStatus: '',
     unpushed: '0\n',
+    commands: [],
+    advance: async () => {},
     ...start,
   }
 
   mock.env(on, { HOME, ...start.env })
   mock.store(on, start.store ?? {})
-  mock.clock(on, { now: NOW })
+  const clock = mock.clock(on, { now: NOW })
+  world.advance = (ms) => clock.advance(ms)
 
   on('session.id', async () => ({ value: 'chat-1' }))
   on('session.cwd', async () => ({ value: world.cwd }))
@@ -106,7 +111,10 @@ export function fake(on: On, start: Partial<Fake> & { store?: Record<string, unk
   })
 
   on('command.register', async ($, e) => ({ value: { command: e.name } }))
-  on('command.run', async ($, e) => ({ text: 'ran ' + e.command }))
+  on('command.run', async ($, e) => {
+    world.commands.push((e.command + ' ' + e.args).trim())
+    return { text: 'ran ' + e.command }
+  })
   on('ui.open', async () => ({ value: { isPlaced: true as const } }))
   on('ui.close', async () => ({ value: undefined }))
   on('ui.focus', async () => ({}))
