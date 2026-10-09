@@ -1,6 +1,5 @@
 {
   "name": "wop-worktrees",
-  "version": "0.1.0",
   "description": "Shows the chat's wop environment in the prompt footer, lists wop environments and git worktrees to switch between or tear down, and asks what to do with them on /exit",
   "author": { "name": "FLampa" },
   "repository": "https://github.com/FLampa/wop-worktrees",
